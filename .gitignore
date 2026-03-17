@@ -1,0 +1,22 @@
+# Secrets - nooit committen
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# Scan results (kunnen groot/gevoelig zijn)
+results/
+weekly/
+
+# Node
+node_modules/
+scanner-app/client/dist/
+scanner-app/node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
