@@ -43,7 +43,7 @@ RUN apt-get update && apt-get install -y python3 python3-pip python3-venv --no-i
 WORKDIR /app
 
 # Kopieer de gebouwde server
-COPY --from=server-build /app/scanner-app/server/node_modules ./scanner-app/server/node_modules
+COPY --from=server-build /app/scanner-app/node_modules ./scanner-app/node_modules
 COPY --from=server-build /app/scanner-app/server/dist ./scanner-app/server/dist
 COPY scanner-app/server/package.json ./scanner-app/server/package.json
 COPY scanner-app/package.json ./scanner-app/package.json
