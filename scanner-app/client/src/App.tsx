@@ -207,7 +207,7 @@ function App() {
       <header className="hero">
         <div>
           <span className="eyebrow">Full stack discovery platform</span>
-          <h1>Discovery Scanner Control Center</h1>
+          <h1>TEST Discovery Scanner Control Center</h1>
           <p>
             Voer losse scans handmatig uit met eigen input of start meteen een volledige scan pipeline
             inclusief dashboard en CSV-output.
