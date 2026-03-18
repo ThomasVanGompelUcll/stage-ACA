@@ -60,16 +60,32 @@ jobs:
           python -m py_compile scan_bridge.py complete.py
           python -m py_compile discovery_pipeline/orchestrator.py discovery_pipeline/reporting/dashboard.py
 
+      - name: Check deployment prerequisites
+        id: deploy_check
+        run: |
+          if [ -n "${{ secrets.AZURE_CREDENTIALS }}" ]; then
+            echo "can_deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "can_deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip deploy (missing AZURE_CREDENTIALS)
+        if: steps.deploy_check.outputs.can_deploy != 'true'
+        run: echo "AZURE_CREDENTIALS is not configured. Build validation succeeded; deployment was skipped."
+
       - name: Azure login
+        if: steps.deploy_check.outputs.can_deploy == 'true'
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Create image tag
         id: meta
+        if: steps.deploy_check.outputs.can_deploy == 'true'
         run: echo "tag=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push image in ACR
+        if: steps.deploy_check.outputs.can_deploy == 'true'
         run: |
           az acr build \
             --registry "$ACR_NAME" \
@@ -80,11 +96,13 @@ jobs:
 
       - name: Resolve ACR login server
         id: acr
+        if: steps.deploy_check.outputs.can_deploy == 'true'
         run: |
           LOGIN_SERVER=$(az acr show --name "$ACR_NAME" --query loginServer -o tsv)
           echo "login_server=$LOGIN_SERVER" >> "$GITHUB_OUTPUT"
 
       - name: Deploy image to Container App
+        if: steps.deploy_check.outputs.can_deploy == 'true'
         run: |
           az containerapp update \
             --name "$CONTAINER_APP_NAME" \
@@ -92,6 +110,7 @@ jobs:
             --image "${{ steps.acr.outputs.login_server }}/${IMAGE_NAME}:${{ steps.meta.outputs.tag }}"
 
       - name: Show active ingress URL
+        if: steps.deploy_check.outputs.can_deploy == 'true'
         run: |
           FQDN=$(az containerapp show --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
           echo "Deployment completed: https://$FQDN"
