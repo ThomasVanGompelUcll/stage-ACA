@@ -53,10 +53,21 @@ type FormState = Record<string, string>;
 
 const fetchJson = async <T,>(url: string, options?: RequestInit): Promise<T> => {
   const response = await fetch(url, options);
-  const data = (await response.json()) as T & { error?: string };
-  if (!response.ok) {
-    throw new Error(data.error || 'Request mislukt.');
+  const raw = await response.text();
+
+  let data: (T & { error?: string }) | null = null;
+  try {
+    data = JSON.parse(raw) as T & { error?: string };
+  } catch {
+    const statusPrefix = response.ok ? 'Server respons was geen geldige JSON.' : `Request faalde (${response.status}).`;
+    const details = raw.trim().slice(0, 180).replace(/\s+/g, ' ');
+    throw new Error(`${statusPrefix} ${details || 'Lege respons.'}`.trim());
   }
+
+  if (!response.ok) {
+    throw new Error(data.error || `Request mislukt (${response.status}).`);
+  }
+
   return data;
 };
 
@@ -145,9 +156,20 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+
+      if (result.queued) {
+        setErrorMessage('Volledige scan is gestart. Resultaten verschijnen zodra de run is afgerond.');
+      }
+
       setActiveResponse(result);
       setIsResultModalOpen(true);
       await loadPageData();
+
+      if (result.queued) {
+        window.setTimeout(() => {
+          void loadPageData();
+        }, 5000);
+      }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Scan actie mislukt.');
     } finally {

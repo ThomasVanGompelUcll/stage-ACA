@@ -12,6 +12,16 @@ import { scanDefinitionMap, scanDefinitions } from './scans.js';
 const app = express();
 const scanRequestSchema = z.record(z.unknown());
 
+function sanitizeRunSegment(input: string): string {
+  const normalized = input.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  return normalized || 'scan';
+}
+
+function buildRunId(domainOrLabel: string): string {
+  const stamp = new Date().toISOString().replace(/[:T]/g, '-').replace(/\.\d+Z$/, '');
+  return `${sanitizeRunSegment(domainOrLabel)}_${stamp}`;
+}
+
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
 app.use('/results', express.static(resultsRoot));
@@ -51,8 +61,36 @@ app.post('/api/scans/:scanId', async (request, response) => {
     return;
   }
 
+  const payload = parsedBody.data;
+
+  // Full-scan can exceed ingress HTTP timeouts, so run it async and return immediately.
+  if (scanId === 'full-scan') {
+    const domain = typeof payload.domain === 'string' ? payload.domain : 'manual_scan';
+    const runId = typeof payload.runId === 'string' && payload.runId.trim()
+      ? payload.runId
+      : buildRunId(domain);
+
+    const queuedPayload = {
+      ...payload,
+      runId,
+    };
+
+    void runScanAction(scanId, queuedPayload).catch((error) => {
+      console.error(`[full-scan:${runId}] scan actie mislukt`, error);
+    });
+
+    response.status(202).json({
+      ok: true,
+      queued: true,
+      action: scanId,
+      runId,
+      message: 'Volledige scan is gestart. Vernieuw de runs-lijst om voortgang te zien.',
+    });
+    return;
+  }
+
   try {
-    const result = await runScanAction(scanId, parsedBody.data);
+    const result = await runScanAction(scanId, payload);
     response.json(result);
   } catch (error) {
     response.status(500).json({
