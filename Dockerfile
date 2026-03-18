@@ -2,34 +2,34 @@
 # We gebruiken een aparte "build" container zodat de uiteindelijke image klein blijft.
 FROM node:22-slim AS client-build
 
-WORKDIR /app
+WORKDIR /app/scanner-app
 
 # Kopieer alleen de package bestanden eerst (betere Docker cache)
-COPY scanner-app/package.json ./scanner-app/package.json
-COPY scanner-app/client/package.json ./scanner-app/client/package.json
-COPY scanner-app/server/package.json ./scanner-app/server/package.json
+COPY scanner-app/package.json ./package.json
+COPY scanner-app/client/package.json ./client/package.json
+COPY scanner-app/server/package.json ./server/package.json
 
 # Installeer Node dependencies
-RUN npm install --workspace scanner-app/client
+RUN npm install --workspace client
 
 # Kopieer de rest van de client source en bouw de React app
-COPY scanner-app/client ./scanner-app/client
-RUN npm run build --workspace scanner-app/client
+COPY scanner-app/client ./client
+RUN npm run build --workspace client
 
 
 # ─── Stap 2: Server bouwen ────────────────────────────────────────────────────
 FROM node:22-slim AS server-build
 
-WORKDIR /app
+WORKDIR /app/scanner-app
 
-COPY scanner-app/package.json ./scanner-app/package.json
-COPY scanner-app/client/package.json ./scanner-app/client/package.json
-COPY scanner-app/server/package.json ./scanner-app/server/package.json
+COPY scanner-app/package.json ./package.json
+COPY scanner-app/client/package.json ./client/package.json
+COPY scanner-app/server/package.json ./server/package.json
 
-RUN npm install --workspace scanner-app/server
+RUN npm install --workspace server
 
-COPY scanner-app/server ./scanner-app/server
-RUN npm run build --workspace scanner-app/server
+COPY scanner-app/server ./server
+RUN npm run build --workspace server
 
 
 # ─── Stap 3: Uiteindelijke image ──────────────────────────────────────────────
