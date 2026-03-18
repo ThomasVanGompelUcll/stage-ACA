@@ -1,0 +1,97 @@
+name: Deploy Scanner App to Azure Container Apps
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - Dockerfile
+      - requirements.txt
+      - complete.py
+      - scan_bridge.py
+      - port_scan.py
+      - discovery_pipeline/**
+      - dns/**
+      - domain/**
+      - whoIs/**
+      - scanner-app/**
+      - .github/workflows/deploy-container-app.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-scanner-app-production
+  cancel-in-progress: true
+
+env:
+  RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'stage-scanner-app' }}
+  CONTAINER_APP_NAME: ${{ vars.AZURE_CONTAINER_APP_NAME || 'aca-scanner-app' }}
+  ACR_NAME: ${{ vars.AZURE_ACR_NAME || 'acaScannerApp' }}
+  IMAGE_NAME: scanner-app
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate frontend/backend build
+        run: |
+          cd scanner-app
+          npm ci
+          npm run build
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate Python syntax
+        run: |
+          python -m py_compile scan_bridge.py complete.py
+          python -m py_compile discovery_pipeline/orchestrator.py discovery_pipeline/reporting/dashboard.py
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Create image tag
+        id: meta
+        run: echo "tag=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push image in ACR
+        run: |
+          az acr build \
+            --registry "$ACR_NAME" \
+            --image "$IMAGE_NAME:${{ steps.meta.outputs.tag }}" \
+            --image "$IMAGE_NAME:latest" \
+            --file Dockerfile \
+            .
+
+      - name: Resolve ACR login server
+        id: acr
+        run: |
+          LOGIN_SERVER=$(az acr show --name "$ACR_NAME" --query loginServer -o tsv)
+          echo "login_server=$LOGIN_SERVER" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy image to Container App
+        run: |
+          az containerapp update \
+            --name "$CONTAINER_APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --image "${{ steps.acr.outputs.login_server }}/${IMAGE_NAME}:${{ steps.meta.outputs.tag }}"
+
+      - name: Show active ingress URL
+        run: |
+          FQDN=$(az containerapp show --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
+          echo "Deployment completed: https://$FQDN"

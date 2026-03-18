@@ -87,6 +87,8 @@ def build_dashboard_html(output_file, summary, report):
 
     provider_list = "".join([f"<li>{esc(name)} <strong>({count})</strong></li>" for name, count in top_providers])
     framework_list = "".join([f"<li>{esc(name)} <strong>({count})</strong></li>" for name, count in top_frameworks])
+    provider_fallback = "<li class='muted'>Geen providers gedetecteerd.</li>"
+    framework_fallback = "<li class='muted'>Geen frameworks gedetecteerd.</li>"
 
     whois_info_html = f"""
     <ul>
@@ -165,7 +167,7 @@ def build_dashboard_html(output_file, summary, report):
         <h3>Risk Levels</h3>
         {risk_chart}
       </div>
-      <div class=\"col\">
+      <div class="col">
         <h3>Top Risk Assets</h3>
         <table>
           <thead><tr><th>Asset</th><th>Score</th><th>Level</th><th>Reasons</th></tr></thead>
@@ -214,9 +216,9 @@ def build_dashboard_html(output_file, summary, report):
     <div class=\"flex\">
       <div class=\"col\">
         <h3>Top Providers</h3>
-        <ul>{provider_list if provider_list else '<li class=\"muted\">Geen providers gedetecteerd.</li>'}</ul>
+        <ul>{provider_list if provider_list else provider_fallback}</ul>
         <h3>Top Frameworks</h3>
-        <ul>{framework_list if framework_list else '<li class=\"muted\">Geen frameworks gedetecteerd.</li>'}</ul>
+        <ul>{framework_list if framework_list else framework_fallback}</ul>
       </div>
       <div class=\"col\">
         <h3>Tool Status</h3>

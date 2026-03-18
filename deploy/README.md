@@ -62,6 +62,37 @@ https://<jouw-fqdn>/api/health
 3. Start een full scan in de UI
 4. Controleer dat outputs verschijnen in /app/results (via Azure portal of storage explorer)
 
+## GitHub Actions pipeline (automatisch deployen)
+
+Workflowbestand:
+
+- `.github/workflows/deploy-container-app.yml`
+
+Benodigde GitHub secret:
+
+- `AZURE_CREDENTIALS`
+
+Maak een service principal en gebruik de JSON-output als waarde voor `AZURE_CREDENTIALS`:
+
+~~~bash
+az ad sp create-for-rbac \
+  --name "github-actions-scanner-app" \
+  --role Contributor \
+  --scopes /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<RESOURCE_GROUP> \
+  --sdk-auth
+~~~
+
+Optionele GitHub repository variables (anders gebruikt de workflow defaults):
+
+- `AZURE_RESOURCE_GROUP` (default: `stage-scanner-app`)
+- `AZURE_CONTAINER_APP_NAME` (default: `aca-scanner-app`)
+- `AZURE_ACR_NAME` (default: `acaScannerApp`)
+
+Trigger:
+
+- Automatisch op push naar `main`
+- Handmatig via `workflow_dispatch`
+
 ## Kostenrichting
 
 Container Apps op Consumption met min-replicas 0 is meestal de goedkoopste optie bij lage activiteit.
