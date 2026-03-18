@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+.venv
+
+# Node modules (worden opnieuw geïnstalleerd in Docker)
+node_modules
+scanner-app/client/node_modules
+scanner-app/server/node_modules
+
+# Build outputs (worden opnieuw gebouwd in Docker)
+scanner-app/client/dist
+scanner-app/server/dist
+
+# Resultaten (komen via Azure Files mount)
+results/
+webService/results/
+dns/resultaten/
+domain/results/
+
+# Environment bestanden (nooit in een image!)
+.env
+*.env
+
+# Overige
+README.md
+PROJECT_OVERVIEW.md
+*.md

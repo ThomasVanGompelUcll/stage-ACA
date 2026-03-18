@@ -98,6 +98,19 @@ npm run dev
 
 Meer details: zie `scanner-app/README.md`.
 
+## Deployment op Azure (Container Apps)
+
+Voor de goedkoopste managed cloud-optie met persistente scanresultaten:
+
+- Gebruik de handleiding in `deploy/README.md`
+- Start automatische deployment met `deploy/azure-container-app.ps1`
+
+Dit pad gebruikt:
+
+- Azure Container Apps (Consumption)
+- Azure Container Registry (ACR)
+- Azure Files mount op `/app/results`
+
 ## Belangrijkste outputbestanden per run
 
 - `summary.json`
