@@ -636,7 +636,7 @@ def action_full_scan(payload):
 
 
 def action_intelx(payload):
-    import weekly as intelx_module
+    import intelx as intelx_module
 
     term = str(payload.get("term", "")).strip()
     if not term:
