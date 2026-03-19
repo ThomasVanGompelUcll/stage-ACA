@@ -1,0 +1,257 @@
+id: /subscriptions/5f13461e-3713-437f-affd-6ac3ddeae6e5/resourceGroups/stage-scanner-app/providers/Microsoft.App/containerapps/aca-scanner-app
+identity:
+  type: None
+location: West Europe
+name: aca-scanner-app
+properties:
+  configuration:
+    activeRevisionsMode: Single
+    dapr: null
+    identitySettings: []
+    ingress:
+      additionalPortMappings: null
+      allowInsecure: false
+      clientCertificateMode: null
+      corsPolicy: null
+      customDomains: null
+      exposedPort: 0
+      external: true
+      fqdn: aca-scanner-app.proudpond-c2c45fd3.westeurope.azurecontainerapps.io
+      ipSecurityRestrictions: null
+      stickySessions:
+        affinity: none
+      targetPort: 8080
+      traffic:
+      - latestRevision: true
+        weight: 100
+      transport: Auto
+    maxInactiveRevisions: 100
+    registries:
+    - identity: ''
+      passwordSecretRef: reg-pswd-cea06fa0-a850
+      server: acascannerapp-gwbubdg2d0ada9c7.azurecr.io
+      username: acaScannerApp
+    runtime: null
+    secrets:
+    - name: intelxapikey
+    - name: reg-pswd-cea06fa0-a850
+    service: null
+  customDomainVerificationId: D78285B3939C4180DD95D01CB762DEABA5E2CD4DB04E1FBCE84CF9C6265E9347
+  delegatedIdentities: []
+  environmentId: /subscriptions/5f13461e-3713-437f-affd-6ac3ddeae6e5/resourceGroups/stage-scanner-app/providers/Microsoft.App/managedEnvironments/aca-scanner-env
+  eventStreamEndpoint: https://westeurope.azurecontainerapps.dev/subscriptions/5f13461e-3713-437f-affd-6ac3ddeae6e5/resourceGroups/stage-scanner-app/containerApps/aca-scanner-app/eventstream
+  latestReadyRevisionName: aca-scanner-app--0000002
+  latestRevisionFqdn: aca-scanner-app--0000002.proudpond-c2c45fd3.westeurope.azurecontainerapps.io
+  latestRevisionName: aca-scanner-app--0000002
+  managedEnvironmentId: /subscriptions/5f13461e-3713-437f-affd-6ac3ddeae6e5/resourceGroups/stage-scanner-app/providers/Microsoft.App/managedEnvironments/aca-scanner-env
+  outboundIpAddresses:
+  - 51.137.8.84
+  - 51.137.8.250
+  - 40.114.177.194
+  - 40.114.177.222
+  - 20.8.61.140
+  - 20.23.204.52
+  - 4.180.170.19
+  - 4.180.170.176
+  - 4.180.170.198
+  - 4.180.170.209
+  - 98.64.213.69
+  - 4.175.48.136
+  - 98.64.208.171
+  - 98.64.213.254
+  - 98.64.209.113
+  - 98.64.211.186
+  - 4.175.51.174
+  - 98.64.215.90
+  - 4.175.51.59
+  - 98.64.210.120
+  - 9.163.38.254
+  - 9.163.38.223
+  - 9.163.38.182
+  - 9.163.38.132
+  - 9.163.38.189
+  - 9.163.39.16
+  - 9.163.38.178
+  - 9.163.39.11
+  - 9.163.39.15
+  - 9.163.38.163
+  - 9.163.251.5
+  - 9.163.251.59
+  - 9.163.251.49
+  - 9.163.251.26
+  - 9.163.251.48
+  - 9.163.251.61
+  - 9.163.251.60
+  - 9.163.251.58
+  - 9.163.251.52
+  - 9.163.251.27
+  - 50.85.47.106
+  - 132.220.138.222
+  - 98.64.117.8
+  - 9.163.164.157
+  - 172.199.51.190
+  - 57.153.149.246
+  - 108.141.96.50
+  - 132.220.195.182
+  - 172.211.220.83
+  - 172.199.185.165
+  - 57.153.2.155
+  - 132.220.8.160
+  - 48.222.228.101
+  - 50.85.157.248
+  - 20.103.135.29
+  - 20.103.134.29
+  - 20.103.132.54
+  - 20.103.134.224
+  - 108.141.252.113
+  - 108.141.252.123
+  - 108.141.60.221
+  - 108.141.61.84
+  - 108.141.61.64
+  - 108.141.60.213
+  - 20.4.8.235
+  - 20.4.9.8
+  - 20.4.9.12
+  - 20.4.9.6
+  - 20.4.9.0
+  - 20.4.9.2
+  - 108.142.173.180
+  - 20.4.9.17
+  - 20.4.8.250
+  - 20.4.8.112
+  - 20.16.47.111
+  - 20.234.178.191
+  - 20.234.178.202
+  - 20.16.42.139
+  - 20.234.178.176
+  - 20.234.178.189
+  - 20.234.178.116
+  - 20.234.178.197
+  - 20.234.178.33
+  - 20.234.178.156
+  - 9.163.54.7
+  - 9.163.54.16
+  - 9.163.53.239
+  - 9.163.54.3
+  - 9.163.53.243
+  - 9.163.54.0
+  - 132.164.124.22
+  - 9.163.54.23
+  - 9.163.54.26
+  - 9.163.54.9
+  - 4.175.254.141
+  - 20.61.158.208
+  - 9.163.153.203
+  - 132.220.165.86
+  - 20.67.79.74
+  - 57.153.126.43
+  - 132.220.146.83
+  - 9.163.252.167
+  - 172.199.229.223
+  - 172.199.95.225
+  - 9.163.79.199
+  - 9.163.252.79
+  - 132.220.145.43
+  - 98.64.122.45
+  - 51.105.151.78
+  - 132.220.232.111
+  - 9.163.27.174
+  - 132.220.196.162
+  - 172.199.200.20
+  - 108.141.222.205
+  - 48.199.108.206
+  - 108.141.101.70
+  - 48.222.244.118
+  - 132.220.157.240
+  - 20.61.162.2
+  - 74.178.218.150
+  - 98.64.50.181
+  - 48.199.152.254
+  - 4.231.82.94
+  - 20.50.240.104
+  - 52.178.83.250
+  - 135.236.47.239
+  - 20.50.8.193
+  - 52.174.77.29
+  - 135.236.49.171
+  - 48.199.178.195
+  - 132.220.183.130
+  - 132.220.252.1
+  - 4.175.211.121
+  - 135.236.70.236
+  - 20.23.194.94
+  provisioningState: Succeeded
+  runningStatus: Running
+  template:
+    containers:
+    - env:
+      - name: PORT
+        value: '8080'
+      - name: PYTHON_EXECUTABLE
+        value: python3
+      - name: INTELX_API_KEY
+        secretRef: intelxapikey
+      - name: INTELX_BASE_URL
+        value: https://free.intelx.io
+      - name: CUTOFF_DAYS
+        value: '7'
+      image: acascannerapp-gwbubdg2d0ada9c7.azurecr.io/scanner-app:manual-20260318-151117
+      name: aca-scanner-app
+      volumeMounts:
+      - mountPath: /app/results
+        volumeName: results-volume
+      probes:
+      - failureThreshold: 3
+        periodSeconds: 10
+        successThreshold: 1
+        tcpSocket:
+          port: 8080
+        timeoutSeconds: 5
+        type: Liveness
+      - failureThreshold: 48
+        periodSeconds: 5
+        successThreshold: 1
+        tcpSocket:
+          port: 8080
+        timeoutSeconds: 5
+        type: Readiness
+      - failureThreshold: 240
+        initialDelaySeconds: 1
+        periodSeconds: 1
+        successThreshold: 1
+        tcpSocket:
+          port: 8080
+        timeoutSeconds: 3
+        type: Startup
+      resources:
+        cpu: 1
+        ephemeralStorage: 4Gi
+        memory: 2Gi
+    initContainers: null
+    revisionSuffix: ''
+    scale:
+      cooldownPeriod: 300
+      maxReplicas: 10
+      minReplicas: 0
+      pollingInterval: 30
+      rules:
+      - http:
+          metadata:
+            concurrentRequests: '10'
+        name: http-scaler
+    serviceBinds: null
+    terminationGracePeriodSeconds: null
+    volumes:
+    - name: results-volume
+      storageName: resultsstorage
+      storageType: AzureFile
+  workloadProfileName: Consumption
+resourceGroup: stage-scanner-app
+systemData:
+  createdAt: '2026-03-18T10:18:43.2202811'
+  createdBy: adm_t.vangompel@acaitsecurity.onmicrosoft.com
+  createdByType: User
+  lastModifiedAt: '2026-03-18T14:22:32.3032661'
+  lastModifiedBy: adm_t.vangompel@acaitsecurity.onmicrosoft.com
+  lastModifiedByType: User
+type: Microsoft.App/containerApps

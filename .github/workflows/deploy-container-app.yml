@@ -29,6 +29,7 @@ env:
   RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'stage-scanner-app' }}
   CONTAINER_APP_NAME: ${{ vars.AZURE_CONTAINER_APP_NAME || 'aca-scanner-app' }}
   ACR_NAME: ${{ vars.AZURE_ACR_NAME || 'acaScannerApp' }}
+  ACR_LOGIN_SERVER: ${{ vars.AZURE_ACR_LOGIN_SERVER || format('{0}.azurecr.io', vars.AZURE_ACR_NAME || 'acascannerapp') }}
   IMAGE_NAME: scanner-app
 
 jobs:
@@ -69,9 +70,15 @@ jobs:
             echo "can_deploy=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Skip deploy (missing AZURE_CREDENTIALS)
-        if: steps.deploy_check.outputs.can_deploy != 'true'
-        run: echo "AZURE_CREDENTIALS is not configured. Build validation succeeded; deployment was skipped."
+          if [ -n "${{ secrets.AZURE_REGISTRY_USERNAME }}" ] && [ -n "${{ secrets.AZURE_REGISTRY_PASSWORD }}" ]; then
+            echo "can_registry_push=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "can_registry_push=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip deploy and push (missing credentials)
+        if: steps.deploy_check.outputs.can_deploy != 'true' && steps.deploy_check.outputs.can_registry_push != 'true'
+        run: echo "No deployment credentials found. Configure AZURE_CREDENTIALS for full deploy or AZURE_REGISTRY_USERNAME/AZURE_REGISTRY_PASSWORD for image push."
 
       - name: Azure login
         if: steps.deploy_check.outputs.can_deploy == 'true'
@@ -81,7 +88,7 @@ jobs:
 
       - name: Create image tag
         id: meta
-        if: steps.deploy_check.outputs.can_deploy == 'true'
+        if: steps.deploy_check.outputs.can_deploy == 'true' || steps.deploy_check.outputs.can_registry_push == 'true'
         run: echo "tag=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push image in ACR
@@ -93,6 +100,29 @@ jobs:
             --image "$IMAGE_NAME:latest" \
             --file Dockerfile \
             .
+
+      - name: Log in to ACR with registry credentials
+        if: steps.deploy_check.outputs.can_deploy != 'true' && steps.deploy_check.outputs.can_registry_push == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.AZURE_REGISTRY_USERNAME }}
+          password: ${{ secrets.AZURE_REGISTRY_PASSWORD }}
+
+      - name: Build and push image with Docker
+        if: steps.deploy_check.outputs.can_deploy != 'true' && steps.deploy_check.outputs.can_registry_push == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: |
+            ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
+            ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: Notify deploy skipped after push
+        if: steps.deploy_check.outputs.can_deploy != 'true' && steps.deploy_check.outputs.can_registry_push == 'true'
+        run: echo "Image pushed to ACR with registry credentials, but deployment was skipped because AZURE_CREDENTIALS is missing."
 
       - name: Resolve ACR login server
         id: acr

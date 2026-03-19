@@ -1,0 +1,4 @@
+$tag = "manual-$(Get-Date -Format yyyyMMdd-HHmmss)"
+az acr build --registry "acaScannerApp" --image "scanner-app:$tag" --file "Dockerfile"
+
+--> in app container -> run nieuwe image tag
