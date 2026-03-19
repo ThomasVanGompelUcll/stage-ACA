@@ -29,7 +29,7 @@ env:
   RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'stage-scanner-app' }}
   CONTAINER_APP_NAME: ${{ vars.AZURE_CONTAINER_APP_NAME || 'aca-scanner-app' }}
   ACR_NAME: ${{ vars.AZURE_ACR_NAME || 'acaScannerApp' }}
-  ACR_LOGIN_SERVER: ${{ vars.AZURE_ACR_LOGIN_SERVER || format('{0}.azurecr.io', vars.AZURE_ACR_NAME || 'acascannerapp') }}
+  ACR_LOGIN_SERVER: ${{ vars.AZURE_ACR_LOGIN_SERVER || '' }}
   IMAGE_NAME: scanner-app
 
 jobs:
@@ -102,6 +102,20 @@ jobs:
             .
 
       - name: Log in to ACR with registry credentials
+        if: steps.deploy_check.outputs.can_deploy != 'true' && steps.deploy_check.outputs.can_registry_push == 'true'
+        run: |
+          if [ -z "$ACR_LOGIN_SERVER" ]; then
+            echo "AZURE_ACR_LOGIN_SERVER is required when using AZURE_REGISTRY_USERNAME/AZURE_REGISTRY_PASSWORD."
+            echo "Set it to your exact registry host, e.g. acascannerapp-gwbubdg2d0ada9c7.azurecr.io"
+            exit 1
+          fi
+          getent hosts "$ACR_LOGIN_SERVER" >/dev/null || {
+            echo "ACR login server does not resolve: $ACR_LOGIN_SERVER"
+            echo "Verify AZURE_ACR_LOGIN_SERVER."
+            exit 1
+          }
+
+      - name: Docker login to ACR
         if: steps.deploy_check.outputs.can_deploy != 'true' && steps.deploy_check.outputs.can_registry_push == 'true'
         uses: docker/login-action@v3
         with:
