@@ -103,23 +103,39 @@ jobs:
 
       - name: Log in to ACR with registry credentials
         if: steps.deploy_check.outputs.can_deploy != 'true' && steps.deploy_check.outputs.can_registry_push == 'true'
+        id: registry_host
         run: |
-          if [ -z "$ACR_LOGIN_SERVER" ]; then
-            echo "AZURE_ACR_LOGIN_SERVER is required when using AZURE_REGISTRY_USERNAME/AZURE_REGISTRY_PASSWORD."
-            echo "Set it to your exact registry host, e.g. acascannerapp-gwbubdg2d0ada9c7.azurecr.io"
+          REGISTRY_HOST="$ACR_LOGIN_SERVER"
+
+          # Fallback 1: reuse current deployed Container App config in repo
+          if [ -z "$REGISTRY_HOST" ] && [ -f "deploy/aca-scanner-app.current.yaml" ]; then
+            REGISTRY_HOST=$(awk '/server: / { print $2; exit }' deploy/aca-scanner-app.current.yaml)
+          fi
+
+          # Fallback 2: conventional host from ACR name
+          if [ -z "$REGISTRY_HOST" ] && [ -n "$ACR_NAME" ]; then
+            REGISTRY_HOST="$(echo "$ACR_NAME" | tr '[:upper:]' '[:lower:]').azurecr.io"
+          fi
+
+          if [ -z "$REGISTRY_HOST" ]; then
+            echo "Could not determine ACR login server."
+            echo "Set repository variable AZURE_ACR_LOGIN_SERVER, e.g. acascannerapp-gwbubdg2d0ada9c7.azurecr.io"
             exit 1
           fi
-          getent hosts "$ACR_LOGIN_SERVER" >/dev/null || {
-            echo "ACR login server does not resolve: $ACR_LOGIN_SERVER"
-            echo "Verify AZURE_ACR_LOGIN_SERVER."
+
+          getent hosts "$REGISTRY_HOST" >/dev/null || {
+            echo "ACR login server does not resolve: $REGISTRY_HOST"
+            echo "Set repository variable AZURE_ACR_LOGIN_SERVER to the exact registry host."
             exit 1
           }
+
+          echo "acr_login_server=$REGISTRY_HOST" >> "$GITHUB_OUTPUT"
 
       - name: Docker login to ACR
         if: steps.deploy_check.outputs.can_deploy != 'true' && steps.deploy_check.outputs.can_registry_push == 'true'
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.ACR_LOGIN_SERVER }}
+          registry: ${{ steps.registry_host.outputs.acr_login_server }}
           username: ${{ secrets.AZURE_REGISTRY_USERNAME }}
           password: ${{ secrets.AZURE_REGISTRY_PASSWORD }}
 
@@ -131,8 +147,8 @@ jobs:
           file: Dockerfile
           push: true
           tags: |
-            ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
-            ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:latest
+            ${{ steps.registry_host.outputs.acr_login_server }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
+            ${{ steps.registry_host.outputs.acr_login_server }}/${{ env.IMAGE_NAME }}:latest
 
       - name: Notify deploy skipped after push
         if: steps.deploy_check.outputs.can_deploy != 'true' && steps.deploy_check.outputs.can_registry_push == 'true'
