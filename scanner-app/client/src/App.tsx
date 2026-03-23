@@ -91,6 +91,38 @@ const fetchJson = async <T,>(url: string, options?: RequestInit): Promise<T> => 
   return data;
 };
 
+const openProtectedFile = async (url: string, suggestedName?: string): Promise<void> => {
+  const userId = getUserId();
+  const response = await fetch(url, {
+    headers: {
+      'x-user-id': userId,
+    },
+  });
+
+  if (!response.ok) {
+    const raw = await response.text();
+    const details = raw.trim().slice(0, 180).replace(/\s+/g, ' ');
+    throw new Error(details || `Bestand ophalen mislukt (${response.status}).`);
+  }
+
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const newWindow = window.open(objectUrl, '_blank', 'noopener,noreferrer');
+
+  if (!newWindow) {
+    const fallback = document.createElement('a');
+    fallback.href = objectUrl;
+    fallback.download = suggestedName ?? 'result';
+    fallback.rel = 'noopener noreferrer';
+    fallback.target = '_blank';
+    document.body.appendChild(fallback);
+    fallback.click();
+    fallback.remove();
+  }
+
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+};
+
 const buildInitialValues = (scan: ScanDefinition): FormState => Object.fromEntries(
   scan.fields.map((field) => [field.name, field.defaultValue?.toString() ?? '']),
 );
@@ -331,6 +363,7 @@ function App() {
             <div className="runs-list">
               {runs.length === 0 ? <p className="muted">Nog geen scanresultaten gevonden.</p> : null}
               {runs.map((run) => {
+                const dashboardUrl = run.dashboardUrl;
                 const domain = typeof run.summary?.domain === 'string' ? run.summary.domain : run.id;
                 const subdomainsCount = typeof run.summary?.subdomains_count === 'number' ? run.summary.subdomains_count : null;
                 const riskCount = typeof run.summary?.high_or_critical_risk_count === 'number'
@@ -380,18 +413,35 @@ function App() {
                       )}
                     </div>
                     <div className="run-actions">
-                      {run.dashboardUrl ? (
-                        <a className="link-button" href={run.dashboardUrl} target="_blank" rel="noreferrer">
+                      {dashboardUrl ? (
+                        <button
+                          className="link-button"
+                          type="button"
+                          onClick={() => {
+                            void openProtectedFile(dashboardUrl, 'dashboard.html').catch((error: Error) => {
+                              setErrorMessage(error.message);
+                            });
+                          }}
+                        >
                           Dashboard openen
-                        </a>
+                        </button>
                       ) : null}
                     </div>
                     <div className="file-list">
                       {run.files.slice(0, 8).map((file) => (
-                        <a key={file.url} href={file.url} target="_blank" rel="noreferrer" className="file-pill">
+                        <button
+                          key={file.url}
+                          type="button"
+                          className="file-pill"
+                          onClick={() => {
+                            void openProtectedFile(file.url, file.name).catch((error: Error) => {
+                              setErrorMessage(error.message);
+                            });
+                          }}
+                        >
                           <span>{file.name}</span>
                           <small>{formatBytes(file.size)}</small>
-                        </a>
+                        </button>
                       ))}
                     </div>
                   </article>

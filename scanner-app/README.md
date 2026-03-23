@@ -57,7 +57,8 @@ Runs zijn owner-scoped gemaakt op basis van een user id.
 - API calls sturen `x-user-id` mee vanuit de client.
 - Per run wordt owner metadata opgeslagen in de run-map.
 - `GET /api/runs` en `GET /api/runs/:runId` tonen alleen eigen runs.
-- Bestanden/dashboards worden geserveerd via `GET /api/runs/:runId/files/:fileName` met owner-check.
+- Bestanden/dashboards worden geserveerd via `GET /api/runs/:runId/files/:fileName` met owner-check en vereisen `x-user-id` header.
+- Een gekopieerde file/dashboard URL zonder de juiste user context werkt niet.
 
 Belangrijk:
 

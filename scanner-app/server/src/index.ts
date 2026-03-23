@@ -24,10 +24,9 @@ function buildRunId(domainOrLabel: string): string {
 
 function getRequestUserId(request: express.Request): string {
   const header = request.header('x-user-id');
-  const query = typeof request.query.userId === 'string' ? request.query.userId : '';
-  const userId = (typeof header === 'string' ? header.trim() : '') || query.trim();
+  const userId = typeof header === 'string' ? header.trim() : '';
   if (!userId) {
-    throw new Error('Missing user identity (x-user-id header or userId query).');
+    throw new Error('Missing user identity (x-user-id header).');
   }
   return userId;
 }

@@ -53,7 +53,7 @@ async function readRunOwnerMeta(runPath: string): Promise<RunOwnerMeta | null> {
   };
 }
 
-async function listFiles(runPath: string, runId: string, ownerId: string): Promise<RunFile[]> {
+async function listFiles(runPath: string, runId: string): Promise<RunFile[]> {
   const entries = await fs.readdir(runPath, { withFileTypes: true });
   const files = await Promise.all(
     entries
@@ -63,7 +63,7 @@ async function listFiles(runPath: string, runId: string, ownerId: string): Promi
         const stats = await fs.stat(absolutePath);
         return {
           name: entry.name,
-          url: `/api/runs/${encodeURIComponent(runId)}/files/${encodeURIComponent(entry.name)}?userId=${encodeURIComponent(ownerId)}`,
+          url: `/api/runs/${encodeURIComponent(runId)}/files/${encodeURIComponent(entry.name)}`,
           size: stats.size,
           modifiedAt: stats.mtime.toISOString(),
         } satisfies RunFile;
@@ -88,14 +88,14 @@ export async function listRunsForUser(ownerId: string): Promise<RunItem[]> {
 
           const stats = await fs.stat(runPath);
           const summary = await safeReadJson(path.join(runPath, 'summary.json'));
-          const files = await listFiles(runPath, entry.name, ownerId);
+          const files = await listFiles(runPath, entry.name);
           return {
             id: entry.name,
             path: runPath,
             modifiedAt: stats.mtime.toISOString(),
             summary,
             dashboardUrl: files.some((file) => file.name === 'dashboard.html')
-              ? `/api/runs/${encodeURIComponent(entry.name)}/files/dashboard.html?userId=${encodeURIComponent(ownerId)}`
+              ? `/api/runs/${encodeURIComponent(entry.name)}/files/dashboard.html`
               : null,
             files,
           } satisfies RunItem;
