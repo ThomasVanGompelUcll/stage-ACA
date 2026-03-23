@@ -71,7 +71,7 @@ app.get('/api/runs/:runId/files/:fileName', async (request, response) => {
     const userId = getRequestUserId(request);
     const filePath = await getRunFilePathForUser(request.params.runId, request.params.fileName, userId);
     if (!filePath) {
-      response.status(404).json({ ok: false, error: 'Bestand niet gevonden.' });
+      response.status(404).json({ ok: false, error: 'Toegang geweigerd of bestand niet beschikbaar.' });
       return;
     }
 

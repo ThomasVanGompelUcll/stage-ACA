@@ -91,8 +91,62 @@ const fetchJson = async <T,>(url: string, options?: RequestInit): Promise<T> => 
   return data;
 };
 
+const parseProtectedFileError = async (response: Response): Promise<string> => {
+  const status = response.status;
+  const base = 'Bestand kan niet geopend worden.';
+
+  try {
+    const payload = await response.json() as { error?: string };
+    if (status === 401 || status === 403 || status === 404) {
+      return 'Toegang geweigerd of bestand niet beschikbaar voor jouw account.';
+    }
+    if (payload.error?.trim()) {
+      return payload.error;
+    }
+  } catch {
+    const raw = (await response.text()).trim();
+    if (raw && status >= 500) {
+      return `${base} Serverfout (${status}).`;
+    }
+  }
+
+  if (status === 401 || status === 403 || status === 404) {
+    return 'Toegang geweigerd of bestand niet beschikbaar voor jouw account.';
+  }
+  return `${base} HTTP ${status}.`;
+};
+
 const openProtectedFile = async (url: string, suggestedName?: string): Promise<void> => {
   const userId = getUserId();
+  const looksLikeHtml = (suggestedName ?? '').toLowerCase().endsWith('.html') || url.toLowerCase().includes('dashboard.html');
+
+  if (looksLikeHtml) {
+    const tab = window.open('', '_blank', 'noopener,noreferrer');
+    if (!tab) {
+      throw new Error('Popup werd geblokkeerd. Laat popups toe om dashboards te openen.');
+    }
+
+    tab.document.title = 'Dashboard laden...';
+    tab.document.body.innerHTML = '<p style="font-family: Arial, sans-serif; padding: 16px;">Dashboard wordt geladen...</p>';
+
+    const response = await fetch(url, {
+      headers: {
+        'x-user-id': userId,
+      },
+    });
+
+    if (!response.ok) {
+      tab.close();
+      throw new Error(await parseProtectedFileError(response));
+    }
+
+    const htmlText = await response.text();
+    tab.document.open();
+    tab.document.write(htmlText);
+    tab.document.close();
+    return;
+  }
+
   const response = await fetch(url, {
     headers: {
       'x-user-id': userId,
@@ -100,9 +154,7 @@ const openProtectedFile = async (url: string, suggestedName?: string): Promise<v
   });
 
   if (!response.ok) {
-    const raw = await response.text();
-    const details = raw.trim().slice(0, 180).replace(/\s+/g, ' ');
-    throw new Error(details || `Bestand ophalen mislukt (${response.status}).`);
+    throw new Error(await parseProtectedFileError(response));
   }
 
   const blob = await response.blob();
@@ -110,14 +162,8 @@ const openProtectedFile = async (url: string, suggestedName?: string): Promise<v
   const newWindow = window.open(objectUrl, '_blank', 'noopener,noreferrer');
 
   if (!newWindow) {
-    const fallback = document.createElement('a');
-    fallback.href = objectUrl;
-    fallback.download = suggestedName ?? 'result';
-    fallback.rel = 'noopener noreferrer';
-    fallback.target = '_blank';
-    document.body.appendChild(fallback);
-    fallback.click();
-    fallback.remove();
+    URL.revokeObjectURL(objectUrl);
+    throw new Error('Popup werd geblokkeerd. Laat popups toe om bestanden te openen.');
   }
 
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
