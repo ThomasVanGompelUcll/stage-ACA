@@ -95,24 +95,27 @@ const parseProtectedFileError = async (response: Response): Promise<string> => {
   const status = response.status;
   const base = 'Bestand kan niet geopend worden.';
 
+  // Check auth/not-found errors first
+  if (status === 401 || status === 403 || status === 404) {
+    return 'Toegang geweigerd of bestand niet beschikbaar voor jouw account.';
+  }
+
+  // Try to read and parse error message from response body
   try {
-    const payload = await response.json() as { error?: string };
-    if (status === 401 || status === 403 || status === 404) {
-      return 'Toegang geweigerd of bestand niet beschikbaar voor jouw account.';
+    const text = await response.text();
+    if (!text) {
+      return `${base} HTTP ${status}.`;
     }
+
+    const payload = JSON.parse(text) as { error?: string };
     if (payload.error?.trim()) {
       return payload.error;
     }
   } catch {
-    const raw = (await response.text()).trim();
-    if (raw && status >= 500) {
-      return `${base} Serverfout (${status}).`;
-    }
+    // If parsing fails or body is empty, use generic message
+    return `${base} HTTP ${status}.`;
   }
 
-  if (status === 401 || status === 403 || status === 404) {
-    return 'Toegang geweigerd of bestand niet beschikbaar voor jouw account.';
-  }
   return `${base} HTTP ${status}.`;
 };
 
@@ -121,14 +124,6 @@ const openProtectedFile = async (url: string, suggestedName?: string): Promise<v
   const looksLikeHtml = (suggestedName ?? '').toLowerCase().endsWith('.html') || url.toLowerCase().includes('dashboard.html');
 
   if (looksLikeHtml) {
-    const tab = window.open('', '_blank', 'noopener,noreferrer');
-    if (!tab) {
-      throw new Error('Popup werd geblokkeerd. Laat popups toe om dashboards te openen.');
-    }
-
-    tab.document.title = 'Dashboard laden...';
-    tab.document.body.innerHTML = '<p style="font-family: Arial, sans-serif; padding: 16px;">Dashboard wordt geladen...</p>';
-
     const response = await fetch(url, {
       headers: {
         'x-user-id': userId,
@@ -136,12 +131,15 @@ const openProtectedFile = async (url: string, suggestedName?: string): Promise<v
     });
 
     if (!response.ok) {
-      tab.close();
       throw new Error(await parseProtectedFileError(response));
     }
 
     const htmlText = await response.text();
-    tab.document.open();
+    const tab = window.open('', '_blank');
+    if (!tab) {
+      throw new Error('Popup werd geblokkeerd. Laat popups toe om dashboards te openen.');
+    }
+
     tab.document.write(htmlText);
     tab.document.close();
     return;
