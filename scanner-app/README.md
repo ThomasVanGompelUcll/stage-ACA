@@ -50,6 +50,20 @@ Niet inbegrepen in de full-scan (bewust gescheiden):
 
 De backend draait standaard op poort `4000` en serveert in productie automatisch de gebouwde React client.
 
+## Per-user run isolatie (eerste versie)
+
+Runs zijn owner-scoped gemaakt op basis van een user id.
+
+- API calls sturen `x-user-id` mee vanuit de client.
+- Per run wordt owner metadata opgeslagen in de run-map.
+- `GET /api/runs` en `GET /api/runs/:runId` tonen alleen eigen runs.
+- Bestanden/dashboards worden geserveerd via `GET /api/runs/:runId/files/:fileName` met owner-check.
+
+Belangrijk:
+
+- Dit is een eerste dev-versie zonder echte token-validatie.
+- Voor productie: vervang dit door Entra ID/JWT validatie in de backend.
+
 ## Python omgeving
 
 De server zoekt standaard eerst naar:

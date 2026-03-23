@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 import { clientDistPath, port, resultsRoot } from './config.js';
 import { runScanAction } from './pythonBridge.js';
-import { getRun, listRuns } from './runStore.js';
+import { getRunFilePathForUser, getRunForUser, listRunsForUser, reserveRunForUser } from './runStore.js';
 import { scanDefinitionMap, scanDefinitions } from './scans.js';
 
 const app = express();
@@ -22,9 +22,18 @@ function buildRunId(domainOrLabel: string): string {
   return `${sanitizeRunSegment(domainOrLabel)}_${stamp}`;
 }
 
+function getRequestUserId(request: express.Request): string {
+  const header = request.header('x-user-id');
+  const query = typeof request.query.userId === 'string' ? request.query.userId : '';
+  const userId = (typeof header === 'string' ? header.trim() : '') || query.trim();
+  if (!userId) {
+    throw new Error('Missing user identity (x-user-id header or userId query).');
+  }
+  return userId;
+}
+
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
-app.use('/results', express.static(resultsRoot));
 
 app.get('/api/health', (_request, response) => {
   response.json({ ok: true });
@@ -34,18 +43,43 @@ app.get('/api/scans', (_request, response) => {
   response.json({ scans: scanDefinitions });
 });
 
-app.get('/api/runs', async (_request, response) => {
-  response.json({ runs: await listRuns() });
+app.get('/api/runs', async (request, response) => {
+  try {
+    const userId = getRequestUserId(request);
+    response.json({ runs: await listRunsForUser(userId) });
+  } catch (error) {
+    response.status(401).json({ ok: false, error: error instanceof Error ? error.message : 'Niet geauthenticeerd.' });
+  }
 });
 
 app.get('/api/runs/:runId', async (request, response) => {
-  const run = await getRun(request.params.runId);
-  if (!run) {
-    response.status(404).json({ ok: false, error: 'Run niet gevonden.' });
-    return;
-  }
+  try {
+    const userId = getRequestUserId(request);
+    const run = await getRunForUser(request.params.runId, userId);
+    if (!run) {
+      response.status(404).json({ ok: false, error: 'Run niet gevonden.' });
+      return;
+    }
 
-  response.json({ ok: true, run });
+    response.json({ ok: true, run });
+  } catch (error) {
+    response.status(401).json({ ok: false, error: error instanceof Error ? error.message : 'Niet geauthenticeerd.' });
+  }
+});
+
+app.get('/api/runs/:runId/files/:fileName', async (request, response) => {
+  try {
+    const userId = getRequestUserId(request);
+    const filePath = await getRunFilePathForUser(request.params.runId, request.params.fileName, userId);
+    if (!filePath) {
+      response.status(404).json({ ok: false, error: 'Bestand niet gevonden.' });
+      return;
+    }
+
+    response.sendFile(path.resolve(filePath));
+  } catch (error) {
+    response.status(401).json({ ok: false, error: error instanceof Error ? error.message : 'Niet geauthenticeerd.' });
+  }
 });
 
 app.post('/api/scans/:scanId', async (request, response) => {
@@ -62,20 +96,36 @@ app.post('/api/scans/:scanId', async (request, response) => {
   }
 
   const payload = parsedBody.data;
+  let userId: string;
+  try {
+    userId = getRequestUserId(request);
+  } catch (error) {
+    response.status(401).json({ ok: false, error: error instanceof Error ? error.message : 'Niet geauthenticeerd.' });
+    return;
+  }
+
+  const payloadRunId = typeof payload.runId === 'string' && payload.runId.trim() ? payload.runId.trim() : '';
+  const inferredDomain = typeof payload.domain === 'string' && payload.domain.trim()
+    ? payload.domain
+    : (typeof payload.term === 'string' && payload.term.trim() ? payload.term : 'manual_scan');
+
+  const runId = payloadRunId || buildRunId(inferredDomain);
+
+  try {
+    await reserveRunForUser(runId, userId);
+  } catch (error) {
+    response.status(403).json({ ok: false, error: error instanceof Error ? error.message : 'Geen toegang tot deze run.' });
+    return;
+  }
+
+  const scopedPayload = {
+    ...payload,
+    runId,
+  };
 
   // Full-scan can exceed ingress HTTP timeouts, so run it async and return immediately.
   if (scanId === 'full-scan') {
-    const domain = typeof payload.domain === 'string' ? payload.domain : 'manual_scan';
-    const runId = typeof payload.runId === 'string' && payload.runId.trim()
-      ? payload.runId
-      : buildRunId(domain);
-
-    const queuedPayload = {
-      ...payload,
-      runId,
-    };
-
-    void runScanAction(scanId, queuedPayload).catch((error) => {
+    void runScanAction(scanId, scopedPayload).catch((error) => {
       console.error(`[full-scan:${runId}] scan actie mislukt`, error);
     });
 
@@ -90,7 +140,7 @@ app.post('/api/scans/:scanId', async (request, response) => {
   }
 
   try {
-    const result = await runScanAction(scanId, payload);
+    const result = await runScanAction(scanId, scopedPayload);
     response.json(result);
   } catch (error) {
     response.status(500).json({

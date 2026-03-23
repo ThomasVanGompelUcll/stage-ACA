@@ -51,8 +51,28 @@ type ScanResponse = Record<string, unknown> & {
 
 type FormState = Record<string, string>;
 
+const USER_ID_STORAGE_KEY = 'scanner.userId';
+
+const getUserId = (): string => {
+  const existing = window.localStorage.getItem(USER_ID_STORAGE_KEY)?.trim();
+  if (existing) {
+    return existing;
+  }
+
+  const generated = `user-${crypto.randomUUID()}`;
+  window.localStorage.setItem(USER_ID_STORAGE_KEY, generated);
+  return generated;
+};
+
 const fetchJson = async <T,>(url: string, options?: RequestInit): Promise<T> => {
-  const response = await fetch(url, options);
+  const userId = getUserId();
+  const mergedHeaders = new Headers(options?.headers ?? {});
+  mergedHeaders.set('x-user-id', userId);
+
+  const response = await fetch(url, {
+    ...options,
+    headers: mergedHeaders,
+  });
   const raw = await response.text();
 
   let data: (T & { error?: string }) | null = null;
