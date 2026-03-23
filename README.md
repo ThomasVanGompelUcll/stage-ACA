@@ -45,6 +45,18 @@ Handmatig/gescheiden:
 - IntelX API key (`INTELX_API_KEY`)
 - Playwright + Chromium (screenshots)
 
+## IntelX API key instellen
+
+Lokaal:
+
+1. Kopieer `.env.example` naar `.env` in de projectroot.
+2. Vul `INTELX_API_KEY` in (en optioneel `INTELX_BASE_URL` / `INTELX_DELAY`).
+
+Azure Container Apps:
+
+1. Zet de key als secret `intelxapikey` op de Container App.
+2. Controleer dat environment variable `INTELX_API_KEY` verwijst naar die secret.
+
 ## Installatie (Python)
 
 ```powershell

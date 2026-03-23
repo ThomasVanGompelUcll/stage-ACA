@@ -54,6 +54,7 @@ COPY --from=client-build /app/scanner-app/client/dist ./scanner-app/client/dist
 # Kopieer de Python scripts
 COPY requirements.txt ./requirements.txt
 COPY complete.py scan_bridge.py ./
+COPY intelx.py ./
 COPY port_scan.py ./
 COPY discovery_pipeline ./discovery_pipeline
 COPY domain ./domain

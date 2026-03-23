@@ -11,18 +11,26 @@ from dotenv import load_dotenv
 
 DEFAULT_CUTOFF_DAYS = 7
 
-API_KEY = "e8e1908b-64e3-4335-bb81-51c5c841b43a"
-BASE_URL = "https://free.intelx.io"
-DELAY = 1.0
+load_dotenv()
 
-HEADERS = {
-    "X-Key": API_KEY,
-    "User-Agent": "ACA-Darkweb-Monitor/1.0",
-}
+API_KEY = os.getenv("INTELX_API_KEY", "").strip()
+BASE_URL = os.getenv("INTELX_BASE_URL", "https://free.intelx.io").strip()
+DELAY = float(os.getenv("INTELX_DELAY", "1.0") or "1.0")
+
+
+def get_headers() -> dict[str, str]:
+    return {
+        "X-Key": API_KEY,
+        "User-Agent": "ACA-Darkweb-Monitor/1.0",
+    }
 
 
 def load_env() -> None:
+    global API_KEY, BASE_URL, DELAY
     load_dotenv()
+    API_KEY = os.getenv("INTELX_API_KEY", "").strip()
+    BASE_URL = os.getenv("INTELX_BASE_URL", "https://free.intelx.io").strip()
+    DELAY = float(os.getenv("INTELX_DELAY", "1.0") or "1.0")
 
 
 def intelx_search(term: str, maxresults: int = 50) -> str:
@@ -41,7 +49,7 @@ def intelx_search(term: str, maxresults: int = 50) -> str:
         "timeout": 0,
     }
 
-    response = requests.post(url, headers=HEADERS, json=payload)
+    response = requests.post(url, headers=get_headers(), json=payload)
     if response.status_code != 200:
         raise RuntimeError(f"Search error {response.status_code}: {response.text}")
     data = response.json()
@@ -54,7 +62,7 @@ def intelx_results(search_id: str, limit: int = 100) -> dict[str, Any]:
     """
     url = f"{BASE_URL}/intelligent/search/result"
     params = {"id": search_id, "limit": limit}
-    response = requests.get(url, headers=HEADERS, params=params)
+    response = requests.get(url, headers=get_headers(), params=params)
     if response.status_code != 200:
         raise RuntimeError(f"Result error {response.status_code}: {response.text}")
     return response.json()
@@ -219,10 +227,11 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if not API_KEY or not BASE_URL:
-        raise SystemExit("Configureer API_KEY en BASE_URL bovenaan het script.")
-
     load_env()
+
+    if not API_KEY or not BASE_URL:
+        raise SystemExit("Configureer INTELX_API_KEY en INTELX_BASE_URL in .env of environment variables.")
+
     cutoff_days_env = os.getenv("CUTOFF_DAYS")
     if cutoff_days_env and cutoff_days_env.isdigit():
         args.days = int(cutoff_days_env)
