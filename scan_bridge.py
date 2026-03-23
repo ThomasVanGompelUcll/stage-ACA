@@ -1,6 +1,7 @@
 import argparse
 import contextlib
 import csv
+import html
 import io
 import json
 import sys
@@ -78,6 +79,102 @@ def ensure_run_dir(domain=None, run_id=None):
 
 def write_json(path, data):
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def build_intelx_dashboard_html(output_file, summary, records):
+        def esc(value):
+                return html.escape(str(value if value is not None else ""))
+
+        generated_at = summary.get("generated_at", "")
+        term = summary.get("term", "")
+        days = summary.get("days", "")
+        result_count = int(summary.get("result_count", 0) or 0)
+
+        source_counts = {}
+        for record in records:
+                source_value = str(record.get("systemid") or record.get("bucket") or "unknown").strip() or "unknown"
+                source_counts[source_value] = source_counts.get(source_value, 0) + 1
+
+        top_sources = sorted(source_counts.items(), key=lambda item: item[1], reverse=True)[:10]
+        top_sources_html = "".join(
+                f"<tr><td>{esc(name)}</td><td>{esc(count)}</td></tr>" for name, count in top_sources
+        )
+
+        preview_rows = []
+        for record in records[:50]:
+                preview_rows.append(
+                        {
+                                "name": record.get("name") or record.get("storageid") or "",
+                                "date": record.get("date") or record.get("added") or "",
+                                "type": record.get("type") or "",
+                                "bucket": record.get("bucket") or "",
+                                "systemid": record.get("systemid") or "",
+                        }
+                )
+
+        rows_html = "".join(
+                "<tr>"
+                f"<td>{esc(row['name'])}</td>"
+                f"<td>{esc(row['date'])}</td>"
+                f"<td>{esc(row['type'])}</td>"
+                f"<td>{esc(row['bucket'])}</td>"
+                f"<td>{esc(row['systemid'])}</td>"
+                "</tr>"
+                for row in preview_rows
+        )
+
+        page_html = f"""
+<!doctype html>
+<html lang=\"en\">
+<head>
+    <meta charset=\"utf-8\" />
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+    <title>IntelX Credential Exposure Dashboard</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 20px; color: #1f2937; background: #f8fafc; }}
+        .section {{ background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; margin-bottom: 14px; }}
+        .grid {{ display: grid; grid-template-columns: repeat(4, minmax(160px, 1fr)); gap: 10px; margin-top: 10px; }}
+        .card {{ border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; background: #f9fafb; }}
+        .kpi {{ font-size: 22px; font-weight: 700; margin-top: 3px; }}
+        table {{ width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }}
+        th, td {{ border: 1px solid #e5e7eb; padding: 7px; text-align: left; vertical-align: top; }}
+        th {{ background: #f1f5f9; }}
+        .muted {{ color: #64748b; }}
+    </style>
+</head>
+<body>
+    <h1>IntelX Credential Exposure Dashboard</h1>
+    <p class=\"muted\">Generated at: {esc(generated_at)}</p>
+
+    <div class=\"section\">
+        <h2>Summary</h2>
+        <div class=\"grid\">
+            <div class=\"card\"><div>Search term</div><div class=\"kpi\">{esc(term)}</div></div>
+            <div class=\"card\"><div>Lookback</div><div class=\"kpi\">{esc(days)} days</div></div>
+            <div class=\"card\"><div>Matches</div><div class=\"kpi\">{esc(result_count)}</div></div>
+            <div class=\"card\"><div>Preview rows</div><div class=\"kpi\">{esc(len(preview_rows))}</div></div>
+        </div>
+    </div>
+
+    <div class=\"section\">
+        <h2>Top Sources</h2>
+        <table>
+            <thead><tr><th>Source</th><th>Count</th></tr></thead>
+            <tbody>{top_sources_html or '<tr><td colspan="2">No source data available.</td></tr>'}</tbody>
+        </table>
+    </div>
+
+    <div class=\"section\">
+        <h2>Result Preview (max 50)</h2>
+        <table>
+            <thead><tr><th>Name/Storage ID</th><th>Date</th><th>Type</th><th>Bucket</th><th>System ID</th></tr></thead>
+            <tbody>{rows_html or '<tr><td colspan="5">No results found for this scan.</td></tr>'}</tbody>
+        </table>
+    </div>
+</body>
+</html>
+"""
+        output_file.write_text(page_html, encoding="utf-8")
 
 
 def read_csv_rows(path):
@@ -678,6 +775,7 @@ def action_intelx(payload):
         "result_count": len(records),
     }
     write_json(run_dir / "summary.json", summary)
+    build_intelx_dashboard_html(run_dir / "dashboard.html", summary, records)
 
     return result_payload(
         "intelx-search",
