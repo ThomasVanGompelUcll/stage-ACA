@@ -122,7 +122,7 @@ function App() {
     [scans],
   );
   const manualScans = useMemo(
-    () => scans.filter((scan) => scan.id !== 'full-scan'),
+    () => scans.filter((scan) => scan.id !== 'full-scan' && scan.id !== 'port-scan'),
     [scans],
   );
 
@@ -435,7 +435,7 @@ function App() {
             setHasAgreedToRisks(false);
           }}
         >
-          <section
+          {/* <section
             className="risk-warning-modal"
             role="dialog"
             aria-modal="true"
@@ -486,7 +486,7 @@ function App() {
                 Scan starten
               </button>
             </div>
-          </section>
+          </section> */}
         </div>
       ) : null}
     </div>
