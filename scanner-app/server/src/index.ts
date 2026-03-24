@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 import { clientDistPath, port, resultsRoot } from './config.js';
 import { runScanAction } from './pythonBridge.js';
-import { getRunFilePathForUser, getRunForUser, listRunsForUser, reserveRunForUser } from './runStore.js';
+import { getRunFilePath, getRunForUser, listRunsForUser, reserveRunForUser } from './runStore.js';
 import { scanDefinitionMap, scanDefinitions } from './scans.js';
 
 const app = express();
@@ -68,16 +68,15 @@ app.get('/api/runs/:runId', async (request, response) => {
 
 app.get('/api/runs/:runId/files/:fileName', async (request, response) => {
   try {
-    const userId = getRequestUserId(request);
-    const filePath = await getRunFilePathForUser(request.params.runId, request.params.fileName, userId);
+    const filePath = await getRunFilePath(request.params.runId, request.params.fileName);
     if (!filePath) {
-      response.status(404).json({ ok: false, error: 'Toegang geweigerd of bestand niet beschikbaar.' });
+      response.status(404).json({ ok: false, error: 'Bestand niet beschikbaar.' });
       return;
     }
 
     response.sendFile(path.resolve(filePath));
-  } catch (error) {
-    response.status(401).json({ ok: false, error: error instanceof Error ? error.message : 'Niet geauthenticeerd.' });
+  } catch {
+    response.status(500).json({ ok: false, error: 'Fout bij ophalen van bestand.' });
   }
 });
 

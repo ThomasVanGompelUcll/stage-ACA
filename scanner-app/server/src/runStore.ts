@@ -173,3 +173,32 @@ export async function getRunFilePathForUser(runId: string, fileName: string, own
     return null;
   }
 }
+
+export async function getRunFilePath(runId: string, fileName: string): Promise<string | null> {
+  const runPath = path.join(resultsRoot, runId);
+  try {
+    const runStats = await fs.stat(runPath);
+    if (!runStats.isDirectory()) {
+      return null;
+    }
+  } catch {
+    return null;
+  }
+
+  const decoded = decodeURIComponent(fileName);
+  const safeName = path.basename(decoded);
+  if (!safeName || safeName !== decoded) {
+    return null;
+  }
+
+  const fullPath = path.join(runPath, safeName);
+  try {
+    const stat = await fs.stat(fullPath);
+    if (!stat.isFile()) {
+      return null;
+    }
+    return fullPath;
+  } catch {
+    return null;
+  }
+}

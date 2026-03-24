@@ -359,6 +359,47 @@ def action_dns(payload):
     with contextlib.redirect_stdout(sys.stderr):
         dns_csv, scanned_count, with_records_count = modules["dns"].run(sub_file, run_dir)
 
+    dns_records = complete.parse_dns_csv(dns_csv)
+    ip_set = set()
+    for records in dns_records.values():
+        for ip in records.get("A", []):
+            ip_set.add(ip)
+
+    existing_summary = get_summary(run_dir)
+    summary = {
+        "generated_at": datetime.now().isoformat(),
+        "domain": domain,
+        "subdomains_count": len(sorted(set(hosts))),
+        "resolved_hosts_count": with_records_count,
+        "ips_count": len(ip_set),
+        "high_or_critical_risk_count": sum(
+            1 for row in read_csv_rows(run_dir / "risk_scores.csv") if row.get("risk_level") in ("high", "critical")
+        ),
+        "scanned_count": scanned_count,
+    }
+    write_json(run_dir / "summary.json", {**existing_summary, **summary})
+
+    complete.build_dashboard_html(
+        run_dir / "dashboard.html",
+        get_summary(run_dir),
+        {
+            "risk_rows": read_csv_rows(run_dir / "risk_scores.csv"),
+            "shadow_rows": read_csv_rows(run_dir / "shadow_it.csv"),
+            "ssl_rows": read_csv_rows(run_dir / "ssl_scan.csv"),
+            "web_rows": read_csv_rows(run_dir / "web_scan_assets.csv"),
+            "ct_rows": read_csv_rows(run_dir / "ct_log_discovery.csv"),
+            "asn_rows": read_csv_rows(run_dir / "asn_lookup.csv"),
+            "reverse_ip_rows": read_csv_rows(run_dir / "reverse_ip_clusters.csv"),
+            "fingerprint_rows": read_csv_rows(run_dir / "fingerprinting.csv"),
+            "email_security_rows": read_csv_rows(run_dir / "email_security.csv"),
+            "takeover_rows": read_csv_rows(run_dir / "subdomain_takeover_candidates.csv"),
+            "cloud_rows": read_csv_rows(run_dir / "cloud_misconfigurations.csv"),
+            "passive_vuln_rows": read_csv_rows(run_dir / "vulnerability_passive.csv"),
+            "whois_data": {},
+            "tool_logs": read_csv_rows(run_dir / "enumeration_tools.csv"),
+        },
+    )
+
     return result_payload(
         "dns-resolution",
         run_dir,
