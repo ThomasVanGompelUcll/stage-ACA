@@ -19,6 +19,11 @@ DKIM_COMMON_SELECTORS = [
 ]
 
 
+def _clean_txt_record(row):
+    """Strip leading/trailing quotes and whitespace from DNS TXT records."""
+    return row.strip().strip('"')
+
+
 def discover_dkim_records(root_domain, selectors=None):
     found_selectors = []
     found_records = []
@@ -27,19 +32,19 @@ def discover_dkim_records(root_domain, selectors=None):
     for selector in selector_list:
         host = f"{selector}._domainkey.{root_domain}"
         txt_rows = resolve_dns_values(host, "TXT")
-        dkim_rows = [row for row in txt_rows if "v=dkim1" in row.lower()]
+        dkim_rows = [row for row in txt_rows if "v=dkim1" in _clean_txt_record(row).lower()]
         if dkim_rows:
             found_selectors.append(selector)
-            found_records.extend(dkim_rows)
+            found_records.extend([_clean_txt_record(row) for row in dkim_rows])
 
     return sorted(set(found_selectors)), found_records
 
 
 def evaluate_email_security(root_domain):
-    spf_txt = [row for row in resolve_dns_values(root_domain, "TXT") if row.lower().startswith("v=spf1")]
-    dmarc_txt = [row for row in resolve_dns_values(f"_dmarc.{root_domain}", "TXT") if row.lower().startswith("v=dmarc1")]
-    mta_sts_txt = [row for row in resolve_dns_values(f"_mta-sts.{root_domain}", "TXT") if row.lower().startswith("v=stsv1")]
-    tls_rpt_txt = [row for row in resolve_dns_values(f"_smtp._tls.{root_domain}", "TXT") if "v=tlsrptv1" in row.lower()]
+    spf_txt = [_clean_txt_record(row) for row in resolve_dns_values(root_domain, "TXT") if _clean_txt_record(row).lower().startswith("v=spf1")]
+    dmarc_txt = [_clean_txt_record(row) for row in resolve_dns_values(f"_dmarc.{root_domain}", "TXT") if _clean_txt_record(row).lower().startswith("v=dmarc1")]
+    mta_sts_txt = [_clean_txt_record(row) for row in resolve_dns_values(f"_mta-sts.{root_domain}", "TXT") if _clean_txt_record(row).lower().startswith("v=stsv1")]
+    tls_rpt_txt = [_clean_txt_record(row) for row in resolve_dns_values(f"_smtp._tls.{root_domain}", "TXT") if "v=tlsrptv1" in _clean_txt_record(row).lower()]
     mx_records = resolve_dns_values(root_domain, "MX")
     dkim_selectors, dkim_records = discover_dkim_records(root_domain)
 
