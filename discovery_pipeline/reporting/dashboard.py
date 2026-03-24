@@ -40,6 +40,8 @@ def build_dashboard_html(output_file, summary, report):
     takeover_rows = report.get("takeover_rows", [])
     cloud_rows = report.get("cloud_rows", [])
     passive_vuln_rows = report.get("passive_vuln_rows", [])
+    dnssec_rows = report.get("dnssec_rows", [])
+    dnscaa_rows = report.get("dnscaa_rows", [])
 
     risk_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
     for row in risk_rows:
@@ -113,6 +115,8 @@ def build_dashboard_html(output_file, summary, report):
     takeover_high = sum(1 for row in takeover_rows if row.get("severity") == "high")
     cloud_potential = sum(1 for row in cloud_rows if row.get("status") == "potential")
     passive_vuln_high = sum(1 for row in passive_vuln_rows if row.get("severity") == "high")
+    dnssec_supported_count = sum(1 for row in dnssec_rows if row.get("dnssec_supported") == "yes")
+    dnscaa_count = sum(1 for row in dnscaa_rows if row.get("has_caa") == "yes")
 
     page_html = f"""
 <!doctype html>
@@ -236,6 +240,20 @@ def build_dashboard_html(output_file, summary, report):
       <li><strong>Rows with high risk:</strong> {esc(sum(1 for r in email_security_rows if r.get('risk_level') == 'high'))}</li>
     </ul>
     {render_table(['domain', 'mx_count', 'spf_mode', 'dmarc_policy', 'dkim_status', 'mta_sts', 'tls_rpt', 'risk_level', 'issues'], email_security_rows, max_rows=20)}
+  </div>
+
+  <div class=\"section\">
+    <h2>DNS Hardening</h2>
+    <div class=\"grid\">
+      <div class=\"card\"><div>DNSSEC supported</div><div class=\"kpi\">{esc(dnssec_supported_count)}</div></div>
+      <div class=\"card\"><div>Hosts met CAA</div><div class=\"kpi\">{esc(dnscaa_count)}</div></div>
+      <div class=\"card\"><div>DNSSEC checked</div><div class=\"kpi\">{esc(len(dnssec_rows))}</div></div>
+      <div class=\"card\"><div>CAA checked</div><div class=\"kpi\">{esc(len(dnscaa_rows))}</div></div>
+    </div>
+    <h3>DNSSEC Details</h3>
+    {render_table(['host', 'dnskey_count', 'ds_count', 'rrsig_count', 'dnssec_supported', 'notes', 'error'], dnssec_rows, max_rows=40)}
+    <h3>CAA Details</h3>
+    {render_table(['host', 'caa_count', 'has_caa', 'caa_records', 'error'], dnscaa_rows, max_rows=40)}
   </div>
 
   <div class=\"section\">

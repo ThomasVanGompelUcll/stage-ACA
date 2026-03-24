@@ -395,6 +395,8 @@ def action_dns(payload):
             "takeover_rows": read_csv_rows(run_dir / "subdomain_takeover_candidates.csv"),
             "cloud_rows": read_csv_rows(run_dir / "cloud_misconfigurations.csv"),
             "passive_vuln_rows": read_csv_rows(run_dir / "vulnerability_passive.csv"),
+            "dnssec_rows": read_csv_rows(run_dir / "dnssec_scan.csv"),
+            "dnscaa_rows": read_csv_rows(run_dir / "dnscaa_scan.csv"),
             "whois_data": {},
             "tool_logs": read_csv_rows(run_dir / "enumeration_tools.csv"),
         },
@@ -417,8 +419,11 @@ def action_dnssec(payload):
     if not hosts:
         hosts, _ = load_hosts_from_run(run_dir)
 
+    if not hosts and domain != "manual":
+        hosts = [domain]
+
     if not hosts:
-        raise BridgeError("Geen hosts beschikbaar voor DNSSEC scan.")
+        raise BridgeError("Geen hosts beschikbaar voor DNSSEC scan. Vul hosts in of kies een bestaande run.")
 
     rows = []
     for host in sorted(set(hosts)):
@@ -508,8 +513,11 @@ def action_dnscaa(payload):
     if not hosts:
         hosts, _ = load_hosts_from_run(run_dir)
 
+    if not hosts and domain != "manual":
+        hosts = [domain]
+
     if not hosts:
-        raise BridgeError("Geen hosts beschikbaar voor DNS CAA scan.")
+        raise BridgeError("Geen hosts beschikbaar voor DNS CAA scan. Vul hosts in of kies een bestaande run.")
 
     rows = []
     for host in sorted(set(hosts)):
@@ -807,6 +815,66 @@ def action_full_scan(payload):
         dns_csv, scanned_count, with_records_count = modules["dns"].run(sub_file, run_dir)
     dns_records = complete.parse_dns_csv(dns_csv)
 
+    dnssec_rows = []
+    for host in all_subdomains:
+        dnskey_values = complete.resolve_dns_values(host, "DNSKEY")
+        ds_values = complete.resolve_dns_values(host, "DS")
+        rrsig_values = complete.resolve_dns_values(host, "RRSIG")
+        nsec_values = complete.resolve_dns_values(host, "NSEC")
+        nsec3_values = complete.resolve_dns_values(host, "NSEC3")
+        dnssec_rows.append(
+            {
+                "host": host,
+                "dnskey_count": len(dnskey_values),
+                "ds_count": len(ds_values),
+                "rrsig_count": len(rrsig_values),
+                "nsec_count": len(nsec_values),
+                "nsec3_count": len(nsec3_values),
+                "dnssec_supported": "yes" if (dnskey_values or ds_values or rrsig_values) else "no",
+                "notes": "; ".join(
+                    [
+                        "DNSKEY gevonden" if dnskey_values else "",
+                        "DS gevonden" if ds_values else "",
+                        "RRSIG gevonden" if rrsig_values else "",
+                    ]
+                ).strip("; "),
+                "error": "",
+            }
+        )
+    complete.write_csv(
+        run_dir / "dnssec_scan.csv",
+        dnssec_rows,
+        [
+            "host",
+            "dnskey_count",
+            "ds_count",
+            "rrsig_count",
+            "nsec_count",
+            "nsec3_count",
+            "dnssec_supported",
+            "notes",
+            "error",
+        ],
+    )
+
+    dnscaa_rows = []
+    for host in all_subdomains:
+        caa_values = complete.resolve_dns_values(host, "CAA")
+        dnscaa_rows.append(
+            {
+                "host": host,
+                "caa_count": len(caa_values),
+                "has_caa": "yes" if caa_values else "no",
+                "caa_records": " | ".join(str(value) for value in caa_values),
+                "error": "",
+            }
+        )
+    complete.write_csv(
+        run_dir / "dnscaa_scan.csv",
+        dnscaa_rows,
+        ["host", "caa_count", "has_caa", "caa_records", "error"],
+    )
+
     reverse_ip_rows, ip_list = complete.build_reverse_ip_clusters(dns_records)
     complete.write_csv(
         run_dir / "reverse_ip_clusters.csv",
@@ -892,6 +960,8 @@ def action_full_scan(payload):
         "cloud_misconfig_count": len(cloud_rows),
         "email_security_high_risk_count": sum(1 for row in email_security_rows if row["risk_level"] == "high"),
         "passive_vuln_high_count": sum(1 for row in passive_vuln_rows if row["severity"] == "high"),
+        "dnssec_supported_count": sum(1 for row in dnssec_rows if row["dnssec_supported"] == "yes"),
+        "dnscaa_hosts_with_caa": sum(1 for row in dnscaa_rows if row["has_caa"] == "yes"),
         "scanned_count": scanned_count,
     }
     write_json(run_dir / "summary.json", summary)
@@ -911,6 +981,8 @@ def action_full_scan(payload):
             "takeover_rows": takeover_rows,
             "cloud_rows": cloud_rows,
             "passive_vuln_rows": passive_vuln_rows,
+            "dnssec_rows": dnssec_rows,
+            "dnscaa_rows": dnscaa_rows,
             "whois_data": whois_data,
             "tool_logs": tool_logs,
         },
