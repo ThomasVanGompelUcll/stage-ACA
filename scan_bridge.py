@@ -409,6 +409,161 @@ def action_dns(payload):
     )
 
 
+def action_dnssec(payload):
+    domain = str(payload.get("domain", "manual")).strip().lower() or "manual"
+    run_dir = ensure_run_dir(domain, payload.get("runId"))
+    hosts = [host.lower() for host in parse_lines(payload.get("hostsText"))]
+
+    if not hosts:
+        hosts, _ = load_hosts_from_run(run_dir)
+
+    if not hosts:
+        raise BridgeError("Geen hosts beschikbaar voor DNSSEC scan.")
+
+    rows = []
+    for host in sorted(set(hosts)):
+        try:
+            dnskey_values = complete.resolve_dns_values(host, "DNSKEY")
+            ds_values = complete.resolve_dns_values(host, "DS")
+            rrsig_values = complete.resolve_dns_values(host, "RRSIG")
+            nsec_values = complete.resolve_dns_values(host, "NSEC")
+            nsec3_values = complete.resolve_dns_values(host, "NSEC3")
+
+            supported = bool(dnskey_values or ds_values or rrsig_values)
+            notes = []
+            if dnskey_values:
+                notes.append("DNSKEY gevonden")
+            if ds_values:
+                notes.append("DS gevonden")
+            if rrsig_values:
+                notes.append("RRSIG gevonden")
+
+            rows.append(
+                {
+                    "host": host,
+                    "dnskey_count": len(dnskey_values),
+                    "ds_count": len(ds_values),
+                    "rrsig_count": len(rrsig_values),
+                    "nsec_count": len(nsec_values),
+                    "nsec3_count": len(nsec3_values),
+                    "dnssec_supported": "yes" if supported else "no",
+                    "notes": "; ".join(notes),
+                    "error": "",
+                }
+            )
+        except Exception as exc:
+            rows.append(
+                {
+                    "host": host,
+                    "dnskey_count": 0,
+                    "ds_count": 0,
+                    "rrsig_count": 0,
+                    "nsec_count": 0,
+                    "nsec3_count": 0,
+                    "dnssec_supported": "unknown",
+                    "notes": "",
+                    "error": str(exc),
+                }
+            )
+
+    complete.write_csv(
+        run_dir / "dnssec_scan.csv",
+        rows,
+        [
+            "host",
+            "dnskey_count",
+            "ds_count",
+            "rrsig_count",
+            "nsec_count",
+            "nsec3_count",
+            "dnssec_supported",
+            "notes",
+            "error",
+        ],
+    )
+
+    existing_summary = get_summary(run_dir)
+    dnssec_summary = {
+        "generated_at": datetime.now().isoformat(),
+        "domain": domain,
+        "dnssec_checked_count": len(rows),
+        "dnssec_supported_count": sum(1 for row in rows if row.get("dnssec_supported") == "yes"),
+    }
+    write_json(run_dir / "summary.json", {**existing_summary, **dnssec_summary})
+
+    return result_payload(
+        "dnssec-scan",
+        run_dir,
+        checkedCount=len(rows),
+        supportedCount=sum(1 for row in rows if row.get("dnssec_supported") == "yes"),
+        previewRows=rows[:20],
+    )
+
+
+def action_dnscaa(payload):
+    domain = str(payload.get("domain", "manual")).strip().lower() or "manual"
+    run_dir = ensure_run_dir(domain, payload.get("runId"))
+    hosts = [host.lower() for host in parse_lines(payload.get("hostsText"))]
+
+    if not hosts:
+        hosts, _ = load_hosts_from_run(run_dir)
+
+    if not hosts:
+        raise BridgeError("Geen hosts beschikbaar voor DNS CAA scan.")
+
+    rows = []
+    for host in sorted(set(hosts)):
+        try:
+            caa_values = complete.resolve_dns_values(host, "CAA")
+            parsed = []
+            for value in caa_values:
+                text = str(value)
+                parsed.append(text)
+
+            rows.append(
+                {
+                    "host": host,
+                    "caa_count": len(caa_values),
+                    "has_caa": "yes" if caa_values else "no",
+                    "caa_records": " | ".join(parsed),
+                    "error": "",
+                }
+            )
+        except Exception as exc:
+            rows.append(
+                {
+                    "host": host,
+                    "caa_count": 0,
+                    "has_caa": "unknown",
+                    "caa_records": "",
+                    "error": str(exc),
+                }
+            )
+
+    complete.write_csv(
+        run_dir / "dnscaa_scan.csv",
+        rows,
+        ["host", "caa_count", "has_caa", "caa_records", "error"],
+    )
+
+    existing_summary = get_summary(run_dir)
+    dnscaa_summary = {
+        "generated_at": datetime.now().isoformat(),
+        "domain": domain,
+        "dnscaa_checked_count": len(rows),
+        "dnscaa_hosts_with_caa": sum(1 for row in rows if row.get("has_caa") == "yes"),
+    }
+    write_json(run_dir / "summary.json", {**existing_summary, **dnscaa_summary})
+
+    return result_payload(
+        "dnscaa-scan",
+        run_dir,
+        checkedCount=len(rows),
+        hostsWithCaa=sum(1 for row in rows if row.get("has_caa") == "yes"),
+        previewRows=rows[:20],
+    )
+
+
 def action_reverse_ip(payload):
     run_dir = ensure_run_dir(payload.get("domain") or "manual", payload.get("runId"))
     dns_csv_text = str(payload.get("dnsCsvText", "")).strip()
@@ -974,6 +1129,8 @@ ACTIONS = {
     "ct-discovery": action_ct,
     "subdomain-enumeration": action_enumeration,
     "dns-resolution": action_dns,
+    "dnssec-scan": action_dnssec,
+    "dnscaa-scan": action_dnscaa,
     "reverse-ip": action_reverse_ip,
     "asn-lookup": action_asn,
     "web-scan": action_web,

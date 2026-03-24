@@ -48,6 +48,26 @@ export const scanDefinitions = [
         ],
     },
     {
+        id: 'dnssec-scan',
+        title: 'DNSSEC scan',
+        description: 'Controleert passief of DNSSEC-records (DNSKEY/DS/RRSIG/NSEC/NSEC3) publiek zichtbaar zijn voor hosts.',
+        fields: [
+            { name: 'runId', label: 'Bestaande run', type: 'run-select', description: 'Optioneel. Gebruik hosts uit een bestaande run.' },
+            { name: 'domain', label: 'Domain label', type: 'text', placeholder: 'example.com', description: 'Alleen gebruikt voor run/bestandslabel.' },
+            { name: 'hostsText', label: 'Hosts', type: 'textarea', placeholder: 'example.com\nwww.example.com', description: 'Laat leeg om hosts uit de gekozen run te gebruiken.' },
+        ],
+    },
+    {
+        id: 'dnscaa-scan',
+        title: 'DNS CAA scan',
+        description: 'Controleert passief CAA-records (issue/issuewild/iodef) om toegelaten certificate authorities te zien.',
+        fields: [
+            { name: 'runId', label: 'Bestaande run', type: 'run-select', description: 'Optioneel. Gebruik hosts uit een bestaande run.' },
+            { name: 'domain', label: 'Domain label', type: 'text', placeholder: 'example.com', description: 'Alleen gebruikt voor run/bestandslabel.' },
+            { name: 'hostsText', label: 'Hosts', type: 'textarea', placeholder: 'example.com\nwww.example.com', description: 'Laat leeg om hosts uit de gekozen run te gebruiken.' },
+        ],
+    },
+    {
         id: 'reverse-ip',
         title: 'Reverse IP',
         description: 'Bouwt IP-clusters op basis van DNS-resultaten uit een run of een handmatige DNS CSV.',
